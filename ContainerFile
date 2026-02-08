@@ -1,0 +1,31 @@
+# BUILD APP
+
+FROM node:20-alpine as builder
+
+RUN apk add --no-cache curl bash git
+
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY . .
+
+RUN bun install
+RUN bun run build
+
+# RUN APP
+
+FROM node:20-alpine
+RUN apk add --no-cache curl bash git
+COPY --from=builder /root/.bun /root/.bun
+ENV PATH="/root/.bun/bin:$PATH"
+WORKDIR /app
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/package.json /app/bun.lock* ./
+RUN bun install --production
+
+EXPOSE 3013
+
+CMD ["bun", "run", "start"]
